@@ -320,6 +320,9 @@ BetterGIAutoStart.exe --launcher-only       只启动启动器并等窗口（诊
 
 ## 十二、排查
 
+> 如果你是 AI Agent 或帮别人排查，请直接看 [AGENTS.md](AGENTS.md)——里面有新机器检查清单、故障树和安全红线。
+
+
 | 现象 | 先看 |
 | --- | --- |
 | 任务跑完但什么都没发生 | `logs\BetterGIAutoStart_*.log` 是否有"今天已经成功运行过" |
