@@ -60,7 +60,7 @@ namespace BetterGIAutoStart
             ResumeLayout(false);
 
             // DPI 只能在窗口句柄创建后才知道，界面放到 OnLoad 里搭
-            Load += (s, e) => { Ui.Init(DeviceDpi); BuildUi(); };
+            Load += (s, e) => { Ui.Init(DeviceDpi); Theme.ApplyTitleBar(Handle); BuildUi(); };
 
             FormClosing += (s, e) =>
             {
@@ -70,6 +70,12 @@ namespace BetterGIAutoStart
                 if (r == DialogResult.Cancel) e.Cancel = true;
                 else if (r == DialogResult.Yes) { DoSave(); if (_dirty) e.Cancel = true; }
             };
+        }
+
+        protected override void OnHandleCreated(EventArgs e)
+        {
+            base.OnHandleCreated(e);
+            Theme.ApplyTitleBar(Handle);
         }
 
         // ───────────────────────── 搭界面 ─────────────────────────

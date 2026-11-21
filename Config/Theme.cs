@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Text;
@@ -44,6 +44,44 @@ namespace BetterGIAutoStart
         internal static Color Danger;
         internal static Color DangerBg;
 
+        // ───────── 标题栏跟随主题：Win11 的深色标题栏 + 自定义标题/边框色 ─────────
+
+        private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;      // Win11 20H1+
+        private const int DWMWA_USE_IMMERSIVE_DARK_MODE_OLD = 19;  // 更早的 Win10 预览版
+        private const int DWMWA_BORDER_COLOR = 34;
+        private const int DWMWA_CAPTION_COLOR = 35;
+        private const int DWMWA_TEXT_COLOR = 36;
+
+        [System.Runtime.InteropServices.DllImport("dwmapi.dll")]
+        private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int value, int size);
+
+        /// <summary>让原生标题栏跟窗口底色统一（不改系统设置，只对这个窗口生效）。</summary>
+        internal static void ApplyTitleBar(IntPtr hwnd)
+        {
+            if (hwnd == IntPtr.Zero) return;
+            try
+            {
+                int on = IsDark ? 1 : 0;
+                if (DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, ref on, sizeof(int)) != 0)
+                    DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE_OLD, ref on, sizeof(int));
+
+                int caption = ToColorRef(Layer);
+                DwmSetWindowAttribute(hwnd, DWMWA_CAPTION_COLOR, ref caption, sizeof(int));
+
+                int text = ToColorRef(TextPrimary);
+                DwmSetWindowAttribute(hwnd, DWMWA_TEXT_COLOR, ref text, sizeof(int));
+
+                int border = ToColorRef(Stroke);
+                DwmSetWindowAttribute(hwnd, DWMWA_BORDER_COLOR, ref border, sizeof(int));
+            }
+            catch { }
+        }
+
+        /// <summary>GDI+ 的 Color 转 Win32 COLORREF（0x00BBGGRR）。</summary>
+        private static int ToColorRef(Color c)
+        {
+            return c.R | (c.G << 8) | (c.B << 16);
+        }
         private static string _fontFamily;
 
         internal static void Load()
