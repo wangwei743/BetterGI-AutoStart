@@ -139,6 +139,27 @@ namespace BetterGIAutoStart
             return root;
         }
 
+        /// <summary>
+        /// 比较"磁盘上的原值"和"合并后的新值"，返回人类可读的差异行（空列表＝没有实质改动）。
+        /// 只比较已知字段，顺序跟着键在合并结果里的顺序。
+        /// </summary>
+        internal static List<string> Diff(ConfigSnapshot snap, AppConfig cfg)
+        {
+            var lines = new List<string>();
+            if (snap == null || cfg == null) return lines;
+
+            var merged = BuildMerged(snap, cfg);
+            foreach (var kv in merged)
+            {
+                JsonNode oldNode = snap.Root != null && snap.Root.ContainsKey(kv.Key) ? snap.Root[kv.Key] : null;
+                string oldText = oldNode == null ? "（文件里没有这个键）" : oldNode.ToJsonString();
+                string newText = kv.Value == null ? "null" : kv.Value.ToJsonString();
+                if (!string.Equals(oldText, newText, StringComparison.Ordinal))
+                    lines.Add(kv.Key + "：  " + oldText + "   →   " + newText);
+            }
+            return lines;
+        }
+
         internal static SaveResult Save(ConfigSnapshot snap, AppConfig cfg)
         {
             var result = new SaveResult();

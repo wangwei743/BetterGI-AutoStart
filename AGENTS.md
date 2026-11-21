@@ -1,4 +1,4 @@
-# AGENTS.md —— 给 AI Agent 的运行与排障手册
+﻿# AGENTS.md —— 给 AI Agent 的运行与排障手册
 
 > 这份文档是写给**接手这个项目的 AI Agent** 看的，不是给最终用户的。
 > 目标：在**陌生的机器**上快速判断"为什么跑不起来"，并按优先级修复，而不是盲目改代码。
@@ -255,3 +255,11 @@ BetterGIAutoStart.exe --stop-before-bettergi   （在用户同意下）
 ## 10. 一句话总结
 
 **先看日志、先查状态文件、先跑 `--self-test`；90% 的"跑不起来"是环境问题（权限标记/OCR 提权/分辨率/账户/开机太早），不是代码逻辑问题。**
+### 12.1 配置界面（`--config`）与自检 JSON
+
+- `BetterGIAutoStart.exe --config` 打开图形配置界面。它在 `LoadConfig()` 之后、`InitPaths()`/提权/`InitOcr()` 之前 `return ConfigUi.Run()`，所以**不建 logs/shots、不写日志、不提权**。改这部分时别把这段挪位置。
+- 界面代码在 `Config/`：`AppConfig.cs`（配置模型，50 个属性）、`ConfigStore.cs`（读写 + JSON 保真 + 原子保存 + `Diff`）、`ConfigForm.cs`（壳 + 路径页 + 自动化页）、`ConfigPages.cs`（其余四页 + `FlatTextArea`）、`ConfigDialogs.cs`（diff / 自检结果对话框）、`ConfigSelfTest.cs`（`--self-test` 子进程 + 轮询结果）、`Theme.cs` / `Controls.cs`（WinUI 风格自绘控件）。
+- 自检结果交接：界面用 `Process.Start(..., Verb="runas")` 跑 `--self-test --self-test-json "<dist>\ConfigUi.selftest.json"`；主程序在 `Main` 的 selfTest 分支末尾调 `WriteSelfTestJson(path)` 写 `ok/time/admin/launcher/game/bettergi/ini/ocr/gameVersion/configPath/logPath/text`。**提权后父进程拿不到子进程 stdout，只能走文件。**
+- 排查：界面崩溃写 `dist\ConfigUi.error.txt`；自检没反应先看 `dist\logs\BetterGIAutoStart_YYYYMMDD.log` 里的 `写自检 JSON 开始/完成` 两行。
+- 自绘控件（`FlatButton`/`FlatTextBox`/`ToggleSwitch`/`NavRail`）都按 `Ui.Px()`（`DeviceDpi/96`）手动缩放，**不要**再启用 `AutoScaleMode.Dpi`——150% DPI 下 WinForms 自动缩放会失效。
+- 自动化测试注意：`NavRail` 的项没有 UIA 矩形（要按客户坐标点：`x=114*S`，第 i 项 `y=(30+38*i)*S`）；`FlatButton` 必须继承 `Button` 才有 InvokePattern；模态对话框打开后不要再对父窗体做 UIA 查找（会超时），改用 `FindWindow` 或截图。

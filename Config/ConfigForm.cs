@@ -20,7 +20,7 @@ namespace BetterGIAutoStart
         private Panel _pageHost;
         private Panel _scroll;
         private Label _lblTitle, _lblSubtitle, _lblStatus;
-        private FlatButton _btnPilot, _btnImport, _btnExport, _btnSave;
+        private FlatButton _btnPilot, _btnImport, _btnExport, _btnSave, _btnSelfTest;
         private int _page = -1;
         private bool _dirty;
 
@@ -110,6 +110,9 @@ namespace BetterGIAutoStart
                 Text = ""
             };
 
+            _btnSelfTest = new FlatButton("运行自检", FlatButton.Kind.Standard) { Height = Ui.Px(32) };
+            _btnSelfTest.Click += (s, e) => RunSelfTest();
+
             _btnPilot = new FlatButton("试跑（停在游戏就绪）", FlatButton.Kind.Standard) { Height = Ui.Px(32) };
             _btnPilot.Click += (s, e) => RunPilot();
 
@@ -122,7 +125,7 @@ namespace BetterGIAutoStart
             _btnSave = new FlatButton("保存", FlatButton.Kind.Accent) { Height = Ui.Px(32) };
             _btnSave.Click += (s, e) => DoSave();
 
-            bottom.Controls.AddRange(new Control[] { _lblStatus, _btnPilot, _btnImport, _btnExport, _btnSave });
+            bottom.Controls.AddRange(new Control[] { _lblStatus, _btnSelfTest, _btnPilot, _btnImport, _btnExport, _btnSave });
             bottom.Resize += (s, e) => LayoutBottom(bottom);
             Controls.Add(bottom);
 
@@ -202,7 +205,9 @@ namespace BetterGIAutoStart
             _btnImport.Size = new Size(Ui.Px(96), Ui.Px(32));
             x -= _btnImport.Width; _btnImport.Location = new Point(x, y); x -= Ui.Px(12);
             _btnPilot.Size = new Size(Ui.Px(176), Ui.Px(32));
-            x -= _btnPilot.Width; _btnPilot.Location = new Point(x, y); x -= Ui.Px(12);
+            x -= _btnPilot.Width; _btnPilot.Location = new Point(x, y); x -= Ui.Px(8);
+            _btnSelfTest.Size = new Size(Ui.Px(96), Ui.Px(32));
+            x -= _btnSelfTest.Width; _btnSelfTest.Location = new Point(x, y); x -= Ui.Px(12);
 
             _lblStatus.SetBounds(pad, 0, Math.Max(Ui.Px(80), x - pad), h);
         }
@@ -579,6 +584,20 @@ namespace BetterGIAutoStart
         private void DoSave()
         {
             CollectToConfig();
+
+            var diff = ConfigStore.Diff(_snap, _cfg);
+            if (diff.Count == 0)
+            {
+                _dirty = false;
+                UpdateStatus("没有检测到改动，未写盘", false);
+                return;
+            }
+
+            using (var dlg = new ConfigDiffDialog(diff))
+            {
+                if (dlg.ShowDialog(this) != DialogResult.OK) return;
+            }
+
             var r = ConfigStore.Save(_snap, _cfg);
             if (r.Ok)
             {

@@ -627,6 +627,13 @@ namespace BetterGIAutoStart
             set { _box.Text = value; }
         }
 
+        [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
+        internal bool ReadOnlyBox
+        {
+            get { return _box.ReadOnly; }
+            set { _box.ReadOnly = value; _box.TabStop = !value; }
+        }
+
         protected override void OnResize(EventArgs e)
         {
             base.OnResize(e);

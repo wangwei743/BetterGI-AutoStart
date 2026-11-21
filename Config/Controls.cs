@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
@@ -71,7 +71,7 @@ namespace BetterGIAutoStart
     }
 
     /// <summary>WinUI 风格按钮：Accent（填充强调色）/ Standard（卡片底 + 描边）/ Subtle（无底）。</summary>
-    internal sealed class FlatButton : Control
+    internal sealed class FlatButton : Button
     {
         internal enum Kind { Accent, Standard, Subtle }
 

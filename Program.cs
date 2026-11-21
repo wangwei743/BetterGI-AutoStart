@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
@@ -251,6 +251,7 @@ namespace BetterGIAutoStart
 
             DryRun = HasArg(args, "--dry-run");
             bool selfTest = HasArg(args, "--self-test");
+            string selfTestJson = ArgValue(args, "--self-test-json"); // 自检结果写文件（给配置界面读）
             bool calibrate = HasArg(args, "--calibrate");
             string testWindow = ArgValue(args, "--test-window");
             StopBeforeBetterGi = HasArg(args, "--stop-before-bettergi");
@@ -307,6 +308,7 @@ namespace BetterGIAutoStart
             {
                 SelfTest();
                 TryFinalizeRunShots();
+                if (!string.IsNullOrEmpty(selfTestJson)) WriteSelfTestJson(selfTestJson);
                 return 0;
             }
             if (!string.IsNullOrEmpty(testWindow))
@@ -2964,6 +2966,53 @@ namespace BetterGIAutoStart
             {
                 Log("提权失败: " + ex.Message);
                 return false;
+            }
+        }
+
+        /// <summary>
+        /// 把最近一次自检的文本与关键结论写成 JSON，供配置界面的「运行自检」读取。
+        /// 提权后父进程拿不到子进程的控制台输出，所以用文件交接。
+        /// </summary>
+        private static void WriteSelfTestJson(string path)
+        {
+            Log("写自检 JSON 开始: " + path);
+            try
+            {
+                string text = "";
+                try
+                {
+                    if (File.Exists(LogFile)) text = File.ReadAllText(LogFile, Encoding.UTF8);
+                }
+                catch { }
+
+                const string marker = "========== 自检 ==========";
+                int idx = text.LastIndexOf(marker, StringComparison.Ordinal);
+                if (idx >= 0) text = text.Substring(idx);
+                if (text.Length > 20000) text = text.Substring(text.Length - 20000);
+
+                var obj = new Dictionary<string, object>
+                {
+                    { "ok", true },
+                    { "time", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") },
+                    { "admin", IsAdmin() },
+                    { "launcher", File.Exists(Cfg.LauncherPath) },
+                    { "game", File.Exists(Cfg.GameExePath) },
+                    { "bettergi", File.Exists(Cfg.BetterGiPath) },
+                    { "ini", File.Exists(Cfg.GameConfigIni) },
+                    { "ocr", Ocr == null ? "" : Ocr.RecognizerLanguage.LanguageTag },
+                    { "gameVersion", ReadGameVersion() },
+                    { "configPath", ConfigPath() },
+                    { "logPath", LogFile },
+                    { "text", text }
+                };
+
+                File.WriteAllText(path, JsonSerializer.Serialize(obj, new JsonSerializerOptions { WriteIndented = true }),
+                    new UTF8Encoding(true));
+                Log("写自检 JSON 完成: " + (File.Exists(path) ? new FileInfo(path).Length + " 字节" : "文件不存在"));
+            }
+            catch (Exception ex)
+            {
+                Log("写自检 JSON 失败: " + ex.Message);
             }
         }
 
