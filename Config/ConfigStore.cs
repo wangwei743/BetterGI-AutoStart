@@ -114,6 +114,31 @@ namespace BetterGIAutoStart
             return root.ToJsonString(WriteOptions);
         }
 
+        /// <summary>
+        /// 以原始树为底合并已知字段，返回要写盘的节点树。
+        /// 规则：文件里已有的键一律按新值覆盖；文件里没有的键，只在值被改过（与默认值不同）时才补写。
+        /// 导出配置也走这里，保证导出的内容和保存的结果一致。
+        /// </summary>
+        internal static JsonObject BuildMerged(ConfigSnapshot snap, AppConfig cfg)
+        {
+            var root = snap != null && snap.Root != null
+                ? (JsonObject)snap.Root.DeepClone()
+                : new JsonObject();
+            if (cfg == null) return root;
+
+            var defaults = new AppConfig();
+            foreach (var p in KnownProperties())
+            {
+                var value = p.GetValue(cfg);
+                bool exists = root.ContainsKey(p.Name);
+                if (!exists && IsSameAsDefault(p, value, defaults)) continue;
+                var node = ToNode(value);
+                if (node == null) root.Remove(p.Name);
+                else root[p.Name] = node;
+            }
+            return root;
+        }
+
         internal static SaveResult Save(ConfigSnapshot snap, AppConfig cfg)
         {
             var result = new SaveResult();
@@ -124,19 +149,7 @@ namespace BetterGIAutoStart
             try
             {
                 // 以原始树为底，只覆盖已知字段：未知字段、字段顺序都保留
-                var root = snap.Root != null ? (JsonObject)snap.Root.DeepClone() : new JsonObject();
-                var defaults = new AppConfig();
-                foreach (var p in KnownProperties())
-                {
-                    var value = p.GetValue(cfg);
-                    bool exists = root.ContainsKey(p.Name);
-                    // 文件里没有的键：只有在值被改过（与默认值不同）时才补写，
-                    // 否则原样不写——这样"打开又保存"不会凭空多出几行
-                    if (!exists && IsSameAsDefault(p, value, defaults)) continue;
-                    var node = ToNode(value);
-                    if (node == null) root.Remove(p.Name);
-                    else root[p.Name] = node;
-                }
+                var root = BuildMerged(snap, cfg);
 
                 string text = Serialize(root);
 
