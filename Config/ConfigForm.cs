@@ -11,13 +11,14 @@ namespace BetterGIAutoStart
     /// WinUI 风格的配置窗口（P2）：
     /// 左栏导航 + 卡片式设置项 + 底部操作条。外观全部自绘，不引入 Windows App SDK。
     /// </summary>
-    internal sealed class ConfigShellForm : Form
+    internal sealed partial class ConfigShellForm : Form
     {
         private ConfigSnapshot _snap;
         private AppConfig _cfg;
 
         private NavRail _rail;
         private Panel _pageHost;
+        private Panel _scroll;
         private Label _lblTitle, _lblSubtitle, _lblStatus;
         private FlatButton _btnPilot, _btnImport, _btnExport, _btnSave;
         private int _page = -1;
@@ -143,6 +144,11 @@ namespace BetterGIAutoStart
             };
             _pageHost.Controls.Add(_lblTitle);
             _pageHost.Controls.Add(_lblSubtitle);
+
+            // 内容区可滚动：关键词表那页会很长
+            _scroll = new Panel { BackColor = Theme.Layer, AutoScroll = true };
+            _pageHost.Controls.Add(_scroll);
+
             Controls.Add(_pageHost);
 
             Resize += (s, e) => LayoutShell();
@@ -173,6 +179,9 @@ namespace BetterGIAutoStart
 
             _lblTitle.SetBounds(0, 0, _pageHost.Width, Ui.Px(34));
             _lblSubtitle.SetBounds(0, Ui.Px(36), _pageHost.Width, Ui.Px(22));
+
+            if (_scroll != null)
+                _scroll.SetBounds(0, Ui.Px(62), _pageHost.Width, Math.Max(Ui.Px(120), _pageHost.Height - Ui.Px(62)));
 
             LayoutBottom(bottom);
             LayoutCurrentPage();
@@ -205,11 +214,18 @@ namespace BetterGIAutoStart
             if (_page == index && index == 0 && _pathBoxes != null) return;
             _page = index;
 
+            if (_scroll != null)
+            {
+                foreach (Control c in _scroll.Controls.CastSnapshot()) c.Dispose();
+                _scroll.Controls.Clear();
+                _scroll.AutoScrollPosition = new Point(0, 0);
+            }
             foreach (Control c in _pageHost.Controls.CastSnapshot())
-                if (c != _lblTitle && c != _lblSubtitle) c.Dispose();
+                if (c != _lblTitle && c != _lblSubtitle && c != _scroll) c.Dispose();
             _pageHost.Controls.Clear();
             _pageHost.Controls.Add(_lblTitle);
             _pageHost.Controls.Add(_lblSubtitle);
+            if (_scroll != null) _pageHost.Controls.Add(_scroll);
 
             _pathBoxes = null; _pathBadges = null; _tgAuto = null; _numAuto = null;
 
@@ -225,9 +241,29 @@ namespace BetterGIAutoStart
                     _lblSubtitle.Text = "这些开关决定程序做到哪一步：是否看门狗、失败是否兜底关机、是否自动点进游戏。";
                     BuildAutoPage();
                     break;
+                case 2:
+                    _lblTitle.Text = "时间与超时";
+                    _lblSubtitle.Text = "各阶段的等待上限。慢机器/大版本更新可以适当加大；默认值已经比较宽松。";
+                    BuildTimeoutPage();
+                    break;
+                case 3:
+                    _lblTitle.Text = "截图与日志";
+                    _lblSubtitle.Text = "失败现场会留截图；成功时默认不留，只保留日志。";
+                    BuildShotPage();
+                    break;
+                case 4:
+                    _lblTitle.Text = "关键词表";
+                    _lblSubtitle.Text = "程序靠这些词判断按钮状态。一行一个词，改错会导致认不出按钮，请对照实测日志再动。";
+                    BuildKeywordPage();
+                    break;
+                case 5:
+                    _lblTitle.Text = "高级（坐标）";
+                    _lblSubtitle.Text = "只在自动识别失效时手动兜底。普通使用不需要改，改错会影响点击位置。";
+                    BuildAdvancedPage();
+                    break;
                 default:
                     _lblTitle.Text = NavItems[index];
-                    _lblSubtitle.Text = "这一页在下一阶段做（P3），先保留占位。";
+                    _lblSubtitle.Text = "这一页还没做。";
                     BuildPlaceholder(index);
                     break;
             }
@@ -242,15 +278,16 @@ namespace BetterGIAutoStart
 
             if (_page == 0) LayoutPathPage();
             else if (_page == 1) LayoutAutoPage();
+            else if (_page == 2 || _page == 3 || _page == 5) LayoutSpecPage();
+            else if (_page == 4) LayoutKeywordPage();
         }
 
         private FlatCard AddCard(Label title, int y, int h)
         {
             var card = new FlatCard { BackColor = Color.Transparent };
-            card.SetBounds(0, y, _pageHost.Width, h);
-            card.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            card.SetBounds(0, y, ContentW, h);
             if (title != null) card.Controls.Add(title);
-            _pageHost.Controls.Add(card);
+            (_scroll ?? _pageHost).Controls.Add(card);
             return card;
         }
 
@@ -270,7 +307,7 @@ namespace BetterGIAutoStart
 
         private void BuildPathPage()
         {
-            var card = AddCard(null, Ui.Px(66), Ui.Px(60) + RowH * 3);
+            var card = AddCard(null, 0, Ui.Px(28) + RowH * 3);
             _pathBoxes = new FlatTextBox[3];
             _pathBadges = new InfoBadge[3];
 
@@ -298,7 +335,7 @@ namespace BetterGIAutoStart
             }
 
             // 说明卡
-            var hint = AddCard(null, Ui.Px(66) + Ui.Px(60) + RowH * 3 + Ui.Px(12), Ui.Px(104));
+            var hint = AddCard(null, Ui.Px(28) + RowH * 3 + Ui.Px(12), Ui.Px(104));
             hint.DrawBorder = false;
             var hintTitle = MkLabel("三个路径怎么找", 10.5f, Theme.TextPrimary, true);
             hintTitle.Tag = "hintTitle";
@@ -316,11 +353,11 @@ namespace BetterGIAutoStart
         private void LayoutPathPage()
         {
             if (_pathBoxes == null) return;
-            int w = _pageHost.Width;
+            int w = ContentW;
             int cardW = w;
             int top = Ui.Px(66) + Ui.Px(8);
 
-            var cards = _pageHost.Controls.CastSnapshot();
+            var cards = (_scroll ?? _pageHost).Controls.CastSnapshot();
             FlatCard pathCard = null, hintCard = null;
             foreach (var c in cards)
             {
@@ -329,7 +366,7 @@ namespace BetterGIAutoStart
                 if (fc.Controls.Count > 0 && fc.Controls[0].Text == PathNames[0]) pathCard = fc;
                 else if (fc.Controls.Count > 0 && fc.Controls[0].Text == "三个路径怎么找") hintCard = fc;
             }
-            if (pathCard != null) { pathCard.SetBounds(0, Ui.Px(66), cardW, Ui.Px(52) + RowH * 3); }
+            if (pathCard != null) { pathCard.SetBounds(0, 0, cardW, Ui.Px(28) + RowH * 3); }
 
             for (int i = 0; i < 3; i++)
             {
@@ -372,7 +409,7 @@ namespace BetterGIAutoStart
 
             if (hintCard != null)
             {
-                hintCard.SetBounds(0, Ui.Px(66) + Ui.Px(52) + RowH * 3 + Ui.Px(12), cardW, Ui.Px(104));
+                hintCard.SetBounds(0, Ui.Px(28) + RowH * 3 + Ui.Px(12), cardW, Ui.Px(104));
                 foreach (var c in hintCard.Controls.CastSnapshot())
                 {
                     if (c.Tag as string == "hintTitle") c.SetBounds(Ui.Px(20), Ui.Px(14), hintCard.Width - Ui.Px(40), Ui.Px(22));
@@ -383,7 +420,7 @@ namespace BetterGIAutoStart
 
         private void BuildAutoPage()
         {
-            var card = AddCard(null, Ui.Px(66), Ui.Px(28) + RowH * 5);
+            var card = AddCard(null, 0, Ui.Px(28) + RowH * 5);
             _tgAuto = new ToggleSwitch[3];
             _numAuto = new FlatTextBox[2];
 
@@ -430,14 +467,14 @@ namespace BetterGIAutoStart
         private void LayoutAutoPage()
         {
             FlatCard card = null;
-            foreach (var c in _pageHost.Controls.CastSnapshot())
+            foreach (var c in (_scroll ?? _pageHost).Controls.CastSnapshot())
             {
                 var fc = c as FlatCard;
                 if (fc != null && fc.Controls.Count > 0) { card = fc; break; }
             }
             if (card == null) return;
 
-            card.SetBounds(0, Ui.Px(66), _pageHost.Width, Ui.Px(28) + RowH * 5);
+            card.SetBounds(0, 0, ContentW, Ui.Px(28) + RowH * 5);
 
             foreach (var c in card.Controls.CastSnapshot())
             {
@@ -529,6 +566,7 @@ namespace BetterGIAutoStart
                 _cfg.MinUptimeMinutes = ParseClamp(_numAuto[0].Text, _cfg.MinUptimeMinutes, 0, 240);
                 _cfg.WatchdogPollSeconds = ParseClamp(_numAuto[1].Text, _cfg.WatchdogPollSeconds, 5, 300);
             }
+            CollectSpecFields();
         }
 
         private static int ParseClamp(string text, int fallback, int min, int max)
