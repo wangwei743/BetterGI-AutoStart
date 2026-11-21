@@ -34,7 +34,7 @@ namespace BetterGIAutoStart
 
         private static readonly string[] NavItems =
         {
-            "路径与程序", "自动化行为", "时间与超时", "截图与日志", "关键词表", "高级（坐标）"
+            "路径与程序", "自动化行为", "时间与超时", "截图与日志", "关键词表", "高级（坐标）", "备份与恢复"
         };
 
         private static readonly string[] PathNames = { "启动器", "原神本体", "BetterGI" };
@@ -216,6 +216,8 @@ namespace BetterGIAutoStart
 
         private void ShowPage(int index)
         {
+            bool wasDirty = _dirty;
+            _suppressDirty = true;
             if (_page == index && index == 0 && _pathBoxes != null) return;
             _page = index;
 
@@ -266,6 +268,11 @@ namespace BetterGIAutoStart
                     _lblSubtitle.Text = "只在自动识别失效时手动兜底。普通使用不需要改，改错会影响点击位置。";
                     BuildAdvancedPage();
                     break;
+                case 6:
+                    _lblTitle.Text = "备份与恢复";
+                    _lblSubtitle.Text = "每次保存都会留一份 .bak。选一份恢复回去，或清掉旧的。";
+                    BuildBackupPage();
+                    break;
                 default:
                     _lblTitle.Text = NavItems[index];
                     _lblSubtitle.Text = "这一页还没做。";
@@ -273,6 +280,8 @@ namespace BetterGIAutoStart
                     break;
             }
             LayoutCurrentPage();
+            _suppressDirty = false;
+            _dirty = wasDirty;
         }
 
         private void LayoutCurrentPage()
@@ -285,6 +294,7 @@ namespace BetterGIAutoStart
             else if (_page == 1) LayoutAutoPage();
             else if (_page == 2 || _page == 3 || _page == 5) LayoutSpecPage();
             else if (_page == 4) LayoutKeywordPage();
+            else if (_page == 6) LayoutBackupPage();
         }
 
         private FlatCard AddCard(Label title, int y, int h)
@@ -324,7 +334,7 @@ namespace BetterGIAutoStart
                 var lbl = MkLabel(PathNames[i], 11, Theme.TextPrimary, true);
                 var sub = MkLabel(PathExes[i] + "（点右侧可浏览选择）", 9, Theme.TextTertiary);
                 var box = new FlatTextBox(values[i] ?? "");
-                box.TextChanged += (s, e) => { _dirty = true; ValidatePaths(); };
+                box.TextChanged += (s, e) => { MarkDirty(); ValidatePaths(); };
                 var badge = new InfoBadge("检查中", InfoBadge.Tone.Neutral);
                 var btn = new FlatButton("浏览…", FlatButton.Kind.Standard);
                 btn.Click += (s, e) => BrowsePath(idx);
@@ -444,7 +454,7 @@ namespace BetterGIAutoStart
                 lbl.Tag = "al" + i;
                 var tg = new ToggleSwitch(values[i]);
                 tg.Tag = "tg" + i;
-                tg.CheckedChanged += (s, e) => { _dirty = true; UpdateStatus("有未保存的修改", true); };
+                tg.CheckedChanged += (s, e) => { MarkDirty(); };
                 _tgAuto[i] = tg;
                 card.Controls.Add(lbl);
                 card.Controls.Add(tg);
@@ -462,7 +472,7 @@ namespace BetterGIAutoStart
                 var box = new FlatTextBox(numItems[i].Item3.ToString(CultureInfo.InvariantCulture));
                 box.Tag = "nb" + i;
                 box.Width = Ui.Px(90);
-                box.TextChanged += (s, e) => { _dirty = true; UpdateStatus("有未保存的修改", true); };
+                box.TextChanged += (s, e) => { MarkDirty(); };
                 _numAuto[i] = box;
                 card.Controls.Add(lbl);
                 card.Controls.Add(box);
@@ -613,11 +623,13 @@ namespace BetterGIAutoStart
 
         private void RunPilot()
         {
-            if (MessageBox.Show(this,
-                    "试跑会用真实环境跑一遍：启动启动器 → 点开始游戏 → 等进游戏就绪，然后停下。\n\n" +
-                    "· 不会启动 BetterGI 一条龙\n· 不会关机\n· 大约需要 3–10 分钟，期间请不要动鼠标\n\n要继续吗？",
-                    "确认试跑", MessageBoxButtons.OKCancel, MessageBoxIcon.Question) != DialogResult.OK)
-                return;
+            int mode;
+            using (var pick = new ConfigPilotDialog())
+            {
+                if (pick.ShowDialog(this) != DialogResult.OK) return;
+                mode = pick.Mode;
+            }
+            if (mode == 0) return;
 
             try
             {
@@ -636,11 +648,11 @@ namespace BetterGIAutoStart
                 Process.Start(new ProcessStartInfo
                 {
                     FileName = exe,
-                    Arguments = "--stop-before-bettergi",
+                    Arguments = mode == 1 ? "--launcher-only" : "--stop-before-bettergi",
                     UseShellExecute = true,
                     Verb = "runas"          // 主程序要管理员权限（OCR/前台窗口），这里直接提权启动
                 });
-                UpdateStatus("已启动试跑（会另开一个控制台窗口，跑到「游戏已就绪」就停）", false);
+                UpdateStatus(mode == 1 ? "已启动试跑：只跑启动器（另开一个控制台窗口）" : "已启动试跑：跑到游戏就绪（另开一个控制台窗口）", false);
             }
             catch (Exception ex)
             {
@@ -706,6 +718,15 @@ namespace BetterGIAutoStart
             }
         }
 
+        // 建页面时会用代码给控件赋值，那些 TextChanged 不该算"用户改动"
+        private bool _suppressDirty;
+
+        private void MarkDirty()
+        {
+            if (_suppressDirty) return;
+            _dirty = true;
+            UpdateStatus("有未保存的修改", true);
+        }
         private void UpdateStatus(string text, bool warn)
         {
             UpdateStatus(text, warn, false);

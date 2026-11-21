@@ -61,7 +61,7 @@ namespace BetterGIAutoStart
         private void AddNumRow(FlatCard card, string key, string label, string hint, int row, int col, int cols, int rowHeight, int fieldW)
         {
             var box = new FlatTextBox(ReadNum(key).ToString(CultureInfo.InvariantCulture));
-            box.TextChanged += (s, e) => { _dirty = true; UpdateStatus("有未保存的修改", true); };
+            box.TextChanged += (s, e) => { MarkDirty(); };
             _fields[key] = box;
             AddRowCore(card, label, hint, box, row, col, cols, rowHeight, fieldW);
         }
@@ -70,7 +70,7 @@ namespace BetterGIAutoStart
         {
             var v = ReadDouble(key);
             var box = new FlatTextBox(v.ToString("0.###", CultureInfo.InvariantCulture));
-            box.TextChanged += (s, e) => { _dirty = true; UpdateStatus("有未保存的修改", true); };
+            box.TextChanged += (s, e) => { MarkDirty(); };
             _fields[key] = box;
             AddRowCore(card, label, hint, box, row, col, cols, rowHeight, 96);
         }
@@ -78,7 +78,7 @@ namespace BetterGIAutoStart
         private void AddTextRow(FlatCard card, string key, string label, string hint, int row, int col, int cols, int rowHeight, int fieldW = 150)
         {
             var box = new FlatTextBox(ReadText(key));
-            box.TextChanged += (s, e) => { _dirty = true; UpdateStatus("有未保存的修改", true); };
+            box.TextChanged += (s, e) => { MarkDirty(); };
             _fields[key] = box;
             AddRowCore(card, label, hint, box, row, col, cols, rowHeight, fieldW);
         }
@@ -86,7 +86,7 @@ namespace BetterGIAutoStart
         private void AddSwitchRow(FlatCard card, string key, string label, string hint, int row, int col, int cols, int rowHeight)
         {
             var tg = new ToggleSwitch(ReadBool(key));
-            tg.CheckedChanged += (s, e) => { _dirty = true; UpdateStatus("有未保存的修改", true); };
+            tg.CheckedChanged += (s, e) => { MarkDirty(); };
             _switches[key] = tg;
             AddRowCore(card, label, hint, tg, row, col, cols, rowHeight, 84);
         }
@@ -148,7 +148,7 @@ namespace BetterGIAutoStart
             var card1 = SpecCard(y, 2);
             y += card1.Height + Ui.Px(12);
             var dirBox = new FlatTextBox(_cfg.ShotDirectory ?? "");
-            dirBox.TextChanged += (s, e) => { _dirty = true; UpdateStatus("有未保存的修改", true); };
+            dirBox.TextChanged += (s, e) => { MarkDirty(); };
             _fields["ShotDirectory"] = dirBox;
             var lbl = MkLabel("截图目录", 10.5f, Theme.TextPrimary);
             var sub = MkLabel("留空表示 exe 同目录下的 shots\\", 8.5f, Theme.TextTertiary);
@@ -240,7 +240,7 @@ namespace BetterGIAutoStart
                 var title = MkLabel(g[1], 10.5f, Theme.TextPrimary, true);
                 var hint = MkLabel(g[2], 8.5f, Theme.TextTertiary);
                 var area = new FlatTextArea(string.Join("\r\n", ReadKeywords(g[0])));
-                area.TextChanged += (s, e) => { _dirty = true; UpdateStatus("有未保存的修改", true); CheckKeywordConflicts(); };
+                area.TextChanged += (s, e) => { MarkDirty(); CheckKeywordConflicts(); };
                 _kw[g[0]] = area;
 
                 card.Controls.Add(title);

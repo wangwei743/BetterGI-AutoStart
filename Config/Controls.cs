@@ -85,6 +85,10 @@ namespace BetterGIAutoStart
             SetStyle(ControlStyles.OptimizedDoubleBuffer | ControlStyles.AllPaintingInWmPaint
                      | ControlStyles.UserPaint | ControlStyles.ResizeRedraw | ControlStyles.Selectable, true);
             DoubleBuffered = true;
+            // 关掉基础 Button 的主题绘制，否则同一个字符串会被画两遍（Subtle 变体上最明显）
+            FlatStyle = FlatStyle.Flat;
+            FlatAppearance.BorderSize = 0;
+            UseVisualStyleBackColor = false;
             Cursor = Cursors.Hand;
             Font = Ui.Font(10);
             TabStop = true;
@@ -123,7 +127,8 @@ namespace BetterGIAutoStart
                     fill = _down ? Theme.Accent : (_hover ? Theme.AccentHover : Theme.Accent);
                     border = fill; text = Theme.AccentText; break;
                 case Kind.Subtle:
-                    fill = _hover ? Theme.CardHover : Color.Transparent;
+                    // 不用纯透明：ClearType 画在未清底的透明层上会留下重影
+                    fill = _hover ? Theme.CardHover : Ui.BackdropOf(this, Theme.Card);
                     border = Color.Transparent; text = Theme.TextPrimary; break;
                 default:
                     fill = _down ? Theme.Divider : (_hover ? Theme.CardHover : Theme.Card);

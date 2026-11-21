@@ -263,3 +263,11 @@ BetterGIAutoStart.exe --stop-before-bettergi   （在用户同意下）
 - 排查：界面崩溃写 `dist\ConfigUi.error.txt`；自检没反应先看 `dist\logs\BetterGIAutoStart_YYYYMMDD.log` 里的 `写自检 JSON 开始/完成` 两行。
 - 自绘控件（`FlatButton`/`FlatTextBox`/`ToggleSwitch`/`NavRail`）都按 `Ui.Px()`（`DeviceDpi/96`）手动缩放，**不要**再启用 `AutoScaleMode.Dpi`——150% DPI 下 WinForms 自动缩放会失效。
 - 自动化测试注意：`NavRail` 的项没有 UIA 矩形（要按客户坐标点：`x=114*S`，第 i 项 `y=(30+38*i)*S`）；`FlatButton` 必须继承 `Button` 才有 InvokePattern；模态对话框打开后不要再对父窗体做 UIA 查找（会超时），改用 `FindWindow` 或截图。
+
+### 12.2 备份与恢复页、试跑范围
+
+- 备份文件命名 `BetterGIAutoStart.config.json.bak.yyyyMMdd_HHmmss`；`ConfigBackup.ListBackups()` 额外用 `StartsWith(文件名 + ".bak.")` 过滤，因为 Windows 通配符会连带匹配没有时间戳后缀的 `.bak`。
+- 恢复流程：确认 → 当前配置另存 `.before-restore.yyyyMMdd_HHmmss` → 覆盖 → `ConfigStore.Load` 校验，失败则回滚 → `_rail.Selected = 0` 同步导航 → `ShowPage(0)`。
+- `ShowPage` 首尾会置 `_suppressDirty`，并把 `_dirty` 复位成进入前的值：建页面时代码给控件赋值会触发 `TextChanged`，不抑制就会误标"有未保存的修改"（早期恢复后状态栏显示成"有未保存的修改"就是这个原因）。所有用户改动统一走 `MarkDirty()`。
+- `FlatButton` 自绘时必须 `FlatStyle = Flat + FlatAppearance.BorderSize = 0 + UseVisualStyleBackColor = false`，否则基础 Button 会把同一个字符串再画一遍（Subtle 变体上看得到重影）；Subtle 的底色也不能用纯透明，ClearType 画在未清底的透明层上会留残影，改用 `Ui.BackdropOf(this, Theme.Card)`。
+- 试跑范围：`ConfigPilotDialog` 返回 `Mode`（1 = `--launcher-only`，2 = `--stop-before-bettergi`，0 = 取消）。

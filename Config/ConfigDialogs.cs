@@ -129,4 +129,80 @@ namespace BetterGIAutoStart
             Theme.ApplyTitleBar(Handle);
         }
     }
+
+    /// <summary>试跑前问一句：只跑启动器，还是一直跑到游戏就绪。</summary>
+    internal sealed class ConfigPilotDialog : Form
+    {
+        /// <summary>1 = 只跑启动器；2 = 跑到游戏就绪；0 = 取消。</summary>
+        internal int Mode { get; private set; }
+
+        private readonly FlatButton _launcher;
+        private readonly FlatButton _gameReady;
+        private readonly FlatButton _cancel;
+        private readonly Label _hint;
+
+        internal ConfigPilotDialog()
+        {
+            Theme.Load();
+            SuspendLayout();
+
+            Text = "试跑";
+            FormBorderStyle = FormBorderStyle.FixedDialog;
+            MaximizeBox = false;
+            MinimizeBox = false;
+            ShowInTaskbar = false;
+            StartPosition = FormStartPosition.CenterParent;
+            AutoScaleMode = AutoScaleMode.None;
+            Font = Ui.Font(9.5f);
+            BackColor = Theme.Card;
+            ForeColor = Theme.TextPrimary;
+            ClientSize = new Size(Ui.Px(560), Ui.Px(300));
+
+            var title = new Label
+            {
+                AutoSize = false,
+                Text = "试跑到哪一步就停？",
+                ForeColor = Theme.TextPrimary,
+                Font = Ui.Font(11f, FontStyle.Bold),
+                BackColor = Theme.Card
+            };
+            title.SetBounds(Ui.Px(20), Ui.Px(18), Ui.Px(520), Ui.Px(26));
+
+            _launcher = new FlatButton("只跑启动器（--launcher-only）", FlatButton.Kind.Standard);
+            _gameReady = new FlatButton("跑到游戏就绪（--stop-before-bettergi）", FlatButton.Kind.Standard);
+            _cancel = new FlatButton("取消", FlatButton.Kind.Subtle);
+
+            _hint = new Label
+            {
+                AutoSize = false,
+                ForeColor = Theme.TextSecondary,
+                Font = Ui.Font(9f),
+                BackColor = Theme.Card,
+                Text = "两者都不会启动 BetterGI 一条龙、都不会关机。"
+            };
+
+            _launcher.Click += (s, e) => { Mode = 1; DialogResult = DialogResult.OK; Close(); };
+            _gameReady.Click += (s, e) => { Mode = 2; DialogResult = DialogResult.OK; Close(); };
+            _cancel.Click += (s, e) => { Mode = 0; DialogResult = DialogResult.Cancel; Close(); };
+
+            Controls.AddRange(new Control[] { title, _launcher, _gameReady, _hint, _cancel });
+            ResumeLayout(false);
+        }
+
+        protected override void OnHandleCreated(EventArgs e)
+        {
+            base.OnHandleCreated(e);
+            Theme.ApplyTitleBar(Handle);
+            LayoutSelf();
+        }
+
+        private void LayoutSelf()
+        {
+            int w = ClientSize.Width;
+            _launcher.SetBounds(Ui.Px(20), Ui.Px(58), w - Ui.Px(40), Ui.Px(46));
+            _gameReady.SetBounds(Ui.Px(20), Ui.Px(118), w - Ui.Px(40), Ui.Px(46));
+            _hint.SetBounds(Ui.Px(20), Ui.Px(176), w - Ui.Px(40), Ui.Px(40));
+            _cancel.SetBounds(w - Ui.Px(20 + 96), Ui.Px(228), Ui.Px(96), Ui.Px(32));
+        }
+    }
 }
