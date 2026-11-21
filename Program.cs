@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
@@ -250,6 +250,23 @@ namespace BetterGIAutoStart
 
             // 配置界面：在 InitPaths/提权/OCR 之前返回，不建目录、不写日志、不提权
             if (HasArg(args, "--config")) return ConfigUi.Run();
+
+            // 诊断包：只读（日志尾部、配置、环境、模板清单、截图），给用户反馈问题时用
+            string diagPath = ArgValue(args, "--diagnostics");
+            if (!string.IsNullOrEmpty(diagPath))
+            {
+                try
+                {
+                    int n = ConfigDiagnostics.Export(diagPath, null);
+                    Console.WriteLine("诊断包已写出：" + diagPath + "（" + n + " 项）");
+                    return 0;
+                }
+                catch (Exception ex)
+                {
+                    Console.Error.WriteLine("导出诊断包失败：" + ex.Message);
+                    return 1;
+                }
+            }
 
             DryRun = HasArg(args, "--dry-run");
             bool selfTest = HasArg(args, "--self-test");

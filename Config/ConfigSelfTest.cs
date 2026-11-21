@@ -121,9 +121,41 @@ namespace BetterGIAutoStart
             UpdateStatus(allOk ? "✔ 自检通过" : "⚠ 自检有项目不通过（见弹窗）", false, !allOk);
             using (var dlg = new ConfigResultDialog("自检结果",
                        allOk ? "全部通过，可以直接挂计划任务了" : "有项目不通过，先按下面的日志改配置",
-                       facts, raw, allOk))
+                       facts, raw, allOk, () => ExportDiagnostics(raw)))
             {
                 dlg.ShowDialog(this);
+            }
+        }
+
+        /// <summary>把日志、配置、环境、截图打成一个 zip，方便用户反馈。</summary>
+        private void ExportDiagnostics(string selfTestRaw)
+        {
+            using (var dlg = new SaveFileDialog())
+            {
+                dlg.Title = "保存诊断包";
+                dlg.Filter = "Zip 压缩包 (*.zip)|*.zip";
+                dlg.FileName = "BetterGIAutoStart_诊断_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".zip";
+                dlg.InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+                if (dlg.ShowDialog(this) != DialogResult.OK) return;
+
+                Cursor = Cursors.WaitCursor;
+                try
+                {
+                    int n = ConfigDiagnostics.Export(dlg.FileName, selfTestRaw);
+                    Cursor = Cursors.Default;
+                    UpdateStatus("✔ 诊断包已导出（" + n + " 项）：" + Path.GetFileName(dlg.FileName), false);
+                    MessageBox.Show(this,
+                        "诊断包已保存：\r\n" + dlg.FileName + "\r\n\r\n" +
+                        "里面是环境信息、自检输出、配置、最近日志和一张屏幕截图，\r\n" +
+                        "没有任何账号信息。把它发到仓库 Issues 里就行：\r\n" +
+                        "github.com/wangwei743/BetterGI-AutoStart/issues",
+                        "诊断包", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+                catch (Exception ex)
+                {
+                    Cursor = Cursors.Default;
+                    UpdateStatus("✘ 导出失败：" + ex.Message, false, true);
+                }
             }
         }
     }

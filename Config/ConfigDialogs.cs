@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Windows.Forms;
@@ -70,7 +70,8 @@ namespace BetterGIAutoStart
     internal sealed class ConfigResultDialog : Form
     {
         internal ConfigResultDialog(string title, string subtitle,
-            IList<KeyValuePair<string, bool?>> facts, string rawText, bool allOk)
+            IList<KeyValuePair<string, bool?>> facts, string rawText, bool allOk,
+            Action onExport = null)
         {
             Theme.Load();
             SuspendLayout();
@@ -119,6 +120,19 @@ namespace BetterGIAutoStart
             close.Click += (s, e) => Close();
             close.SetBounds(ClientSize.Width - Ui.Px(20 + 96), ClientSize.Height - Ui.Px(20 + 32), Ui.Px(96), Ui.Px(32));
             Controls.Add(close);
+
+            // 出问题时要反馈，一键打包比让用户自己找日志靠谱
+            if (onExport != null)
+            {
+                var export = new FlatButton("导出诊断包…", FlatButton.Kind.Standard) { Height = Ui.Px(32) };
+                export.Click += (s, e) =>
+                {
+                    try { onExport(); }
+                    catch (Exception ex) { MessageBox.Show(this, "导出失败：" + ex.Message, "诊断包", MessageBoxButtons.OK, MessageBoxIcon.Warning); }
+                };
+                export.SetBounds(ClientSize.Width - Ui.Px(20 + 96 + 12 + 132), ClientSize.Height - Ui.Px(20 + 32), Ui.Px(132), Ui.Px(32));
+                Controls.Add(export);
+            }
 
             ResumeLayout(false);
         }

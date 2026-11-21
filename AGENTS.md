@@ -271,3 +271,16 @@ BetterGIAutoStart.exe --stop-before-bettergi   （在用户同意下）
 - `ShowPage` 首尾会置 `_suppressDirty`，并把 `_dirty` 复位成进入前的值：建页面时代码给控件赋值会触发 `TextChanged`，不抑制就会误标"有未保存的修改"（早期恢复后状态栏显示成"有未保存的修改"就是这个原因）。所有用户改动统一走 `MarkDirty()`。
 - `FlatButton` 自绘时必须 `FlatStyle = Flat + FlatAppearance.BorderSize = 0 + UseVisualStyleBackColor = false`，否则基础 Button 会把同一个字符串再画一遍（Subtle 变体上看得到重影）；Subtle 的底色也不能用纯透明，ClearType 画在未清底的透明层上会留残影，改用 `Ui.BackdropOf(this, Theme.Card)`。
 - 试跑范围：`ConfigPilotDialog` 返回 `Mode`（1 = `--launcher-only`，2 = `--stop-before-bettergi`，0 = 取消）。
+### 12.3 诊断包（--diagnostics / 自检窗口按钮）
+
+`Config/ConfigDiagnostics.cs` 是纯静态类，直接往 `ZipArchive` 里写条目，**不落临时目录**：
+
+- 受限环境（沙箱/受限令牌）下 `%TEMP%` 可能不可写，早先版本用临时目录会被 `Access to the path ... is denied` 拦下。
+- 屏幕截图用 **JPEG q88 且宽度压到 2560**：4K PNG 单张约 8MB，会被 Issues 上传上限卡住；压缩后整包约 0.2MB。
+- 日志只取最近三个文件的尾部（每个约 200KB），用 `FileShare.ReadWrite` 打开，程序正在写也能读。
+- 两个入口：CLI `--diagnostics <zip>`、自检结果窗口里的「导出诊断包…」按钮（走 `SaveFileDialog`）。
+
+调试这类窗口时的两条经验（都踩过）：
+
+- 模态子窗（自检结果、保存对话框）在 UI Automation 里**挂在属主窗口的子树下**，在 `RootElement.Children` 里找不到；要用属主窗口的 `FindFirst(TreeScope.Descendants, ...)`。
+- 测试脚本若把主窗设成 `HWND_TOPMOST`，模态子窗会被压在下面（UIA 能查到、屏幕看不到），截图前要把子窗也提为 TOPMOST。

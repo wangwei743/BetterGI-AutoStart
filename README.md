@@ -314,6 +314,7 @@ WinForms 自绘的 WinUI 风格界面，七个页面：
 
 - **运行自检**：提权跑一次 `--self-test`，结果用 JSON 文件交接回来，弹窗列出 7 条结论（三个路径 / config.ini / 管理员 / OCR / 游戏版本）并附完整自检原文。
 - **试跑**：先问「跑到哪一步就停」——`只跑启动器`（`--launcher-only`，约 30 秒）或 `跑到游戏就绪`（`--stop-before-bettergi`，3–10 分钟）。两者都不会启动一条龙、不会关机。
+- **导出诊断包**：自检结果窗口里点「导出诊断包…」，把环境信息、自检输出、当前配置、最近三个日志、模板清单和一张屏幕截图打成一个 zip（约 0.2MB）。出问题直接发这个，比截一堆图快。命令行也可以：`BetterGIAutoStart.exe --diagnostics 包.zip`。
 ## 十、命令行
 
 ```bat
@@ -328,7 +329,9 @@ BetterGIAutoStart.exe --skip-uptime         跳过开机等待
 BetterGIAutoStart.exe --match-file 图片 --match-name 模板   离线模板匹配测试
 BetterGIAutoStart.exe --click-template 模板 模板定位并点击（调试用）
 BetterGIAutoStart.exe --click-client X,Y    客户区坐标点击（调试用）
-BetterGIAutoStart.exe --launcher-only       只启动启动器并等窗口（诊断用）
+BetterGIAutoStart.exe --launcher-only       只启动启动器并等窗
+BetterGIAutoStart.exe --config              打开图形化配置界面
+BetterGIAutoStart.exe --diagnostics 包.zip  导出诊断包（环境/自检/配置/日志/截图）口（诊断用）
 ```
 
 ---
