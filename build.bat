@@ -2,18 +2,16 @@
 chcp 65001 >nul
 cd /d "%~dp0"
 
-rem Rebuild GenshinAuto.exe (self-contained single file) into .\dist
-rem Requires .NET 10 SDK. Run from this folder.
+rem 重新构建到 .\dist（文件夹部署，不是单文件）
+rem 需要 .NET 10 SDK。源码必须保持 UTF-8 带 BOM。
 
 echo ============================================================
-echo   Building GenshinAuto ... (source must stay UTF-8 with BOM)
+echo   Building BetterGI-AutoStart ...
 echo ============================================================
 echo.
 
 dotnet publish -c Release -r win-x64 --self-contained true ^
-  -p:PublishSingleFile=true ^
-  -p:IncludeNativeLibrariesForSelfExtract=true ^
-  -p:EnableCompressionInSingleFile=true ^
+  -p:PublishSingleFile=false ^
   -p:DebugType=none ^
   -o dist
 
@@ -25,5 +23,9 @@ if errorlevel 1 (
 )
 
 echo.
-echo BUILD OK: %~dp0dist\GenshinAuto.exe
+echo BUILD OK: %~dp0dist\BetterGIAutoStart.exe
+echo.
+echo 下一步建议：
+echo   dist\BetterGIAutoStart.exe --self-test
+echo   dist\BetterGIAutoStart.exe --config
 pause

@@ -218,7 +218,9 @@ namespace BetterGIAutoStart
     {
         #region 字段
 
-        private const string Version = "1.0.0";
+        // 版本号只在这里改；命名空间/程序集版本在 csproj 里同步
+        private static readonly string Version =
+            typeof(Program).Assembly.GetName().Version.ToString(3);
         private static AppConfig Cfg;
         private static string LogDir = "";
         private static string LogFile = "";

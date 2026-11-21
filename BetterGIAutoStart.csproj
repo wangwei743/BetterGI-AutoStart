@@ -13,6 +13,9 @@
     <InvariantGlobalization>false</InvariantGlobalization>
     <NoWarn>WFO0003</NoWarn>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <Version>1.1.0</Version>
+    <FileVersion>1.1.0.0</FileVersion>
+    <AssemblyVersion>1.1.0.0</AssemblyVersion>
   </PropertyGroup>
 
   <ItemGroup>
